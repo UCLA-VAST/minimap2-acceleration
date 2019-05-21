@@ -7,6 +7,9 @@
 ### Build testbed and generate test data
 
 ```bash
+# Fetch code
+git clone https://github.com/UCLA-VAST/minimap2-acceleration.git
+
 # Build testbed
 (cd testbed && make);
 
@@ -247,6 +250,6 @@ This research is supported by CRISP, one of six centers in JUMP, a Semiconductor
 
 [image-1]:	https://img.shields.io/badge/Version-Experimental-green.svg
 [image-2]:	https://img.shields.io/bower/l/bootstrap.svg
-[image-3]:	https://user-images.githubusercontent.com/843780/58130406-c7fa6280-7bd0-11e9-8880-9617bcbd3171.png "OLC Flow" width=400px
-[image-4]:	https://user-images.githubusercontent.com/843780/58130612-4b1bb880-7bd1-11e9-86f4-81fe4f1be4d1.png "Overlap Steps" width=400px
-[image-5]:	https://user-images.githubusercontent.com/843780/58130132-2ffc7900-7bd0-11e9-92f5-d5fe437c5785.png "Profiling Result" width=400px
+[image-3]:	https://user-images.githubusercontent.com/843780/58130406-c7fa6280-7bd0-11e9-8880-9617bcbd3171.png
+[image-4]:	https://user-images.githubusercontent.com/843780/58130612-4b1bb880-7bd1-11e9-86f4-81fe4f1be4d1.png
+[image-5]:	https://user-images.githubusercontent.com/843780/58130132-2ffc7900-7bd0-11e9-92f5-d5fe437c5785.png
