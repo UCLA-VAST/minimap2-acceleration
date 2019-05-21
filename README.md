@@ -239,13 +239,13 @@ This research is supported by CRISP, one of six centers in JUMP, a Semiconductor
 [16]:	#limit
 [17]:	#ack
 [18]:	http://www.cs.jhu.edu/~langmea/resources/lecture_notes/assembly_olc.pdf
-[19]:	https://github.com/lh3/Minimap2
+[19]:	https://github.com/lh3/minimap2
 [20]:	https://doi.org/10.1093/bioinformatics/bty191
-[21]:	http://vast.cs.ucla.edu/sites/default/files/publications/Minimap2-acc-approved.pdf
+[21]:	http://vast.cs.ucla.edu/sites/default/files/publications/minimap2-acc-approved.pdf
 [22]:	http://datasets.pacb.com.s3.amazonaws.com/2014/c_elegans/list.html
-[23]:	https://github.com/lh3/Minimap2
-[24]:	https://lh3.github.io/Minimap2/Minimap2.html
-[25]:	https://github.com/lh3/Minimap2#limit
+[23]:	https://github.com/lh3/minimap2
+[24]:	https://lh3.github.io/minimap2/minimap2.html
+[25]:	https://github.com/lh3/minimap2#limit
 [26]:	https://doi.org/10.1093/bioinformatics/bty191
 
 [image-1]:	https://img.shields.io/badge/Version-Experimental-green.svg
