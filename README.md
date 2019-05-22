@@ -46,6 +46,26 @@ cmp out-1k.txt kernel-1k.txt
 
 ### Build CPU SIMD kernel and run benchmarks
 
+```bash
+# Make sure Intel Parallel Studio XE is installed
+#   and you have a CPU with AVX2 support.
+
+# Source Intel Parallel Studio XE environment
+source /opt/tools/intel/parallel-studio/parallel_studio_xe_2019/psxevars.sh
+
+# Build SIMD kernel
+(cd kernel/simd/ && make);
+
+# Execute the kernel benchmark with automatic thread control
+kernel/simd/kernel in-1k.txt kernel-1k.txt
+
+# Advanced use: execute the kernel benchmark with 14 threads, scatter affinity and NUMA affinity on CPU 1
+KMP_AFFINITY=granularity=fine,scatter OMP_NUM_THREADS=14 numactl --cpubind=1 kernel/simd/kernel in-1k.txt kernel-1k.txt
+
+# Compare the results
+cmp out-1k.txt kernel-1k.txt
+```
+
 ## Table of Contents
 
 - [Getting Started][1]
@@ -64,14 +84,15 @@ cmp out-1k.txt kernel-1k.txt
 	- [Directory Layout][14]
 	- [Testbed][15]
 	- [GPU Kernel][16]
-- [Limitations and Notes][17]
-- [Acknowledgement][18]
+	- [CPU Kernel][17]
+- [Limitations and Notes][18]
+- [Acknowledgement][19]
 
 ## <a name="general"></a> General Information
 
 ### <a name="intro"></a> Introduction
 
-In genome sequencing, it is a crucial but time-consuming task to [detect potential overlaps][19] between any pair of the input reads, especially those that are ultra-long. The state-of-the-art overlapping tool [Minimap2][20] outperforms other popular tools in speed and accuracy. It has a single computing hot-spot, [chaining][21], that takes 70% of the time and needs to be accelerated.
+In genome sequencing, it is a crucial but time-consuming task to [detect potential overlaps][20] between any pair of the input reads, especially those that are ultra-long. The state-of-the-art overlapping tool [Minimap2][21] outperforms other popular tools in speed and accuracy. It has a single computing hot-spot, [chaining][22], that takes 70% of the time and needs to be accelerated.
 
 We modify the chaining algorithm to reorder the operation sequence that transforms the algorithm into its hardware-friendly equivalence. We customize a fine-grained task dispatching scheme which could keep parallel PEs busy while satisfying the on-chip memory restriction. Moreover, we map the algorithm to a fully pipelined streaming architecture on FPGA using HLS, which achieves significant performance improvement. The same methodology applies to GPU and CPU SIMD implementation, and we also achieve decent speedups.
 
@@ -79,7 +100,7 @@ In this open source repository, we release (1) our HLS chaining algorithm implem
 
 If you want to check out details or use our acceleration in your work, please see our paper and cite:
 
-> L. Guo, J. Lau, Z. Ruan, P. Wei, and J. Cong, “[Hardware Acceleration of Long Read Pairwise Overlapping in Genome Sequencing: A Race Between FPGA and GPU][22],” in 2019 IEEE 27th International Symposium On Field-Programmable Custom Computing Machines (FCCM), April 2019.
+> L. Guo, J. Lau, Z. Ruan, P. Wei, and J. Cong, “[Hardware Acceleration of Long Read Pairwise Overlapping in Genome Sequencing: A Race Between FPGA and GPU][23],” in 2019 IEEE 27th International Symposium On Field-Programmable Custom Computing Machines (FCCM), April 2019.
 
 ### <a name="backg"></a> Background
 
@@ -138,9 +159,23 @@ You need to have a C compiler and CUDA 10 installed. You can build the GPU kerne
 
 #### Build CPU Kernel
 
+You need to have Intel Parallel Studio XE installed. The code is tested with Intel Parallel Studio XE 2019. You need to first setup the compilation environment with:
+
+```bash
+source /opt/tools/intel/parallel-studio/parallel_studio_xe_2019/psxevars.sh
+```
+
+The path may differs in your environment. Please consult with your system administrator for the location.
+
+You can build the CPU SIMD kernel with the following command:
+
+```bash
+(cd kernel/simd/ && make);
+```
+
 ### <a name="generate"></a> Generate Test Data
 
-We tested our implementation with the public Caenorhabditis Elegans 40x Sequence Coverage dataset obtained from a PacBio sequencer. You may want to first obtain the dataset from [here][23]. You can use any of the download tools it recommended on the page to obtain the `.fastq` files, and combine them with the `cat` command. In the following text, we assume you have the combined genome read file at `~/c_elegans40x.fastq`.
+We tested our implementation with the public Caenorhabditis Elegans 40x Sequence Coverage dataset obtained from a PacBio sequencer. You may want to first obtain the dataset from [here][24]. You can use any of the download tools it recommended on the page to obtain the `.fastq` files, and combine them with the `cat` command. In the following text, we assume you have the combined genome read file at `~/c_elegans40x.fastq`.
 
 To generate the test data for later benchmarking, you can run:
 
@@ -158,7 +193,7 @@ This command generates `in-30k.txt`, the input file of the chaining function for
 
 ### <a name="gpu"></a> Run GPU Benchmark
 
-With the test data generated in [Generate Test Data][24] section, you can execute the built GPU kernel with:
+With the test data generated in [Generate Test Data][25] section, you can execute the built GPU kernel with:
 
 ```bash
 kernel/cuda/kernel in-30k.txt kernel-30k.txt
@@ -176,7 +211,7 @@ For example, with NVIDIA Tesla P100 GPU, the output is:
  ***** kernel took 2.688967 seconds for end-to-end
 ```
 
-NOTE: If you are using a GPU other than NVIDIA Tesla P100 GPU, you may want to tune the GPU specific parameters. Please see `kernel/cuda/include/common.h` and [GPU Kernel][25] section for details.
+NOTE: If you are using a GPU other than NVIDIA Tesla P100 GPU, you may want to tune the GPU specific parameters. Please see `kernel/cuda/include/common.h` and [GPU Kernel][26] section for details.
 
 To check the correctness, you can run:
 
@@ -187,6 +222,36 @@ cmp out-30k.txt kernel-30k.txt
 If it outputs nothing as expected, this means the output of the acceleration kernel is correct.
 
 ### <a name="cpu"></a> Run CPU Benchmark
+
+With the test data generated in [Generate Test Data][27] section, you can execute the built CPU SIMD kernel with:
+
+```bash
+kernel/simd/kernel in-30k.txt kernel-30k.txt
+```
+
+This command reads the input anchors from file `in-30k.txt`, run the CPU SIMD kernel for computation, and write computed scores and predecessors into file `kernel-30k.txt`.
+
+This command prints one metric on standard output, which is the total kernel execution time on CPU. For example, on a 14 threaded Intel Xeon CPU E5-2680, the output is:
+
+```bash
+ ***** kernel took 4.358382 seconds to finish
+```
+
+You may want to have control over how many threads to execute on CPU. You can specify it with an environment variable `OMP_NUM_THREADS`. Besides, if you want to control over the thread affinity with CPU cores, you can specify `KMP_AFFINITY`. You can see [Intel® C++ Compiler 19.0 Developer Guide and Reference][28] for details. For example, the following command runs the kernel on 14 threads, and use scatter affinity for threads:
+
+```bash
+KMP_AFFINITY=granularity=fine,scatter OMP_NUM_THREADS=14 kernel/simd/kernel in-30k.txt kernel-30k.txt
+```
+
+To experiment with NUMA affinity, you can simply bind all execution to a single CPU core with `numactl --cpubind=1`.
+
+To check the correctness, you can run:
+
+```bash
+cmp out-30k.txt kernel-30k.txt
+```
+
+If it outputs nothing as expected, this means the output of the acceleration kernel is correct.
 
 ### <a name="eval"></a> Evaluate Overlapping Results
 
@@ -204,12 +269,13 @@ If it outputs nothing as expected, this means the output of the acceleration ker
 	* **kernel/cuda/device/device\_kernel\_wrapper.cu**: the wrapper function for transferring data, executing GPU kernel, and the measurement of execution time.
 	* **kernel/cuda/include/common.h**: the parameters for GPU execution, including the CUDA stream count, the block size, the thread unrolling factor and the tiling size.
 * **kernel/simd**: a SIMD implementation using pragmas of Intel C Compiler.
+	* **kernel/simd/src/host\_kernel.cpp**: the CPU SIMD kernel implementation for the chaining algorithm.
 
 ### <a name="testbed"></a> Testbed
 
 #### Command Line Tool
 
-The testbed is a modified version of [Minimap2][26] software and inherits most of the command line options from Minimap2. Therefore, you can check out the [manual reference pages][27] of Minimap2 to see what is available in the testbed program. You can simply use it as if you invoke the Minimap2 command line tool.
+The testbed is a modified version of [Minimap2][29] software and inherits most of the command line options from Minimap2. Therefore, you can check out the [manual reference pages][30] of Minimap2 to see what is available in the testbed program. You can simply use it as if you invoke the Minimap2 command line tool.
 
 The modified software parse three additional command line options:
 
@@ -297,23 +363,102 @@ In `kernel/cuda/device/device_kernel.cu`, you can decide if you use shared memor
 
 However, this may reduce occupancy. You can experiment to see if the size of shared memory in your device is sufficient.
 
+### <a name="cpu-kernel-devel"></a>CPU Kernel
+
+#### Command Line Tool
+
+The command line interface for the benchmark is simple. You can invoke the command with two files as options. The first option is the dumped input file from the testbed program. The second option is the path to the file you want the kernel to dump results. Please note that do not pass the dumped output file as the second option. You need that file to compare for correctness with the output of the kernel. For example:
+
+```
+./kernel/simd/kernel in-30k.txt kernel-30k.txt
+```
+
+#### OpenMP Parallelism and Thread Affinity
+
+To control over parallelization, you can pass environment variables. For example:
+
+* `OMP_NUM_THREADS`: the count of spawned OpenMP threads. `OMP_NUM_THREADS=14` instructs OpenMP to create 14 threads as the thread pool for computation of tasks.
+* `KMP_AFFINITY`: a parameter to restrict execution of threads to a subset of physical cores so that the cache can be reused after context switching. See [Intel C++ Compiler 19.0 Developer Guide and Reference][31] for details.
+
+Besides, you may want to modify the parallelization scheduling strategy used by OpenMP. You can modify the `schedule(guided)` parameter in `kernel/simd/src/host_kernel.cpp`:
+
+```
+#pragma omp parallel for schedule(guided)
+```
+
+To restrict the execution of the program to CPU cores in specified NUMA nodes, you can use [`numactl(8)`][32] tool.
+
+If you want to implement thread affinity in the original Minimap2 software, you can modify `kthread.c` file with changes similar to:
+
+```c
+diff --git a/kthread.c b/kthread.c
+index ffdf940..7a9373c 100644
+--- a/kthread.c
++++ b/kthread.c
+@@ -1,5 +1,8 @@
++#define _GNU_SOURCE
+ #include <pthread.h>
+ #include <stdlib.h>
++#include <errno.h>
++#include <stdlib.h>
+ #include <limits.h>
+ #include <stdint.h>
+ #include "kthread.h"
+@@ -63,6 +66,13 @@ void kt_for(int n_threads, void (*func)(void*,long,int), void *data, long n)
+                for (i = 0; i < n_threads; ++i)
+                        t.w[i].t = &t, t.w[i].i = i;
+                for (i = 0; i < n_threads; ++i) pthread_create(&tid[i], 0, ktf_worker, &t.w[i]);
++        		for (i = 0; i < n_threads; ++i) {
++            		cpu_set_t cpuset;
++            		CPU_ZERO(&cpuset);
++            		CPU_SET(i, &cpuset);
++            		int s = pthread_setaffinity_np(tid[i], sizeof(cpu_set_t), &cpuset);
++            		if (s != 0) return;
++        		}
+                for (i = 0; i < n_threads; ++i) pthread_join(tid[i], 0);
+                free(tid); free(t.w);
+        } else {
+```
+
+If you want to implement NUMA optimizations in the original Minimap2 software, you need to allocate all data passed to the chaining algorithm in the corresponding NUMA memory node. To do so, you can use [`numa(3)`][33] to allocate, or [Silo][34] for cross-platform support.
+
+#### Memory Alignment
+
+If you want to integrate the CPU kernel into the original software, please remember to align all data. You can check out `kernel/simd/src/host_kernel.cpp` to see how to allocate aligned memory with `aligned_alloc` function.
+
+Besides, remember to keep all alignment annotations of local variables, and `__assume_aligned` macro. Otherwise, the compiler may assume the data to be unaligned and produce suboptimal assembly code.
+
+#### Vectorization
+
+For portability, we transform loops into parallelizable form and implement all vectorization instructions with `#pragma simd` pragma. If you want to port the acceleration to AVX512 or future instruction set, you may change `-xAVX2` to `-xAVX512` in the `Makefile`. If you want the program to be portable to machines with no AVX2 support, you can remove `-axAVX2` in the `Makefile`.
+
+To check if your CPU has AVX2 support, you can run the following command:
+
+```c
+cat /proc/cpuinfo | grep avx2 | head -1
+```
+
+If it outputs something that starts with `flags`, the CPU can run AVX2 programs.
+
 ## <a name="limit"></a> Limitations and Notes
 
 * Our accelerated kernels do not support spliced long reads. For example, acceleration of `minimap2 -ax splice ref.fa tgt.fa` is not yet supported.
 * Our accelerations are not yet integrated into the software. The code in this repository contains kernels for the chaining function itself, which can be driven by testbed generated chaining data. File input and output takes significant time in benchmarking, and we don’t count the time in the kernel execution. To achieve end-to-end acceleration, integration is required.
 * We use an assumption that the quality of output does not degrade when we choose the lookup depth of the dynamic programming algorithm to be 64, based on the claim in Li, H. (2018).
-* We inherit most of [limitations of Minimap2][28].
+* We inherit most of [limitations of Minimap2][35].
 * For integration, we recommend implementing the whole `mm_chain_dp` function in all accelerations solutions to reduce output communication. The reason we choose the score value as the output point is that we can better evaluate the correctness in fine grain. We also recommend integrating the seeding part.
 
 ## <a name="ack"></a> Acknowledgement
 
 We directly used and modified the code from Heng Li’s Minimap2 to generate test data for chaining algorithm. We also implement all kernels of the chaining algorithm based on Heng Li’s paper:
 
-> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][29]
+> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][36]
 
 This research is supported by CRISP, one of six centers in JUMP, a Semiconductor Research Corporation (SRC) program and the contributions from the member companies under the Center for Domain-Specific Computing (CDSC) Industrial Partnership Program.
 
-![][image-6]
+---
+
+![][image-6] 
 
 [1]:	#started
 [2]:	#general
@@ -331,23 +476,30 @@ This research is supported by CRISP, one of six centers in JUMP, a Semiconductor
 [14]:	#layout
 [15]:	#testbed
 [16]:	#gpu-kernel-devel
-[17]:	#limit
-[18]:	#ack
-[19]:	http://www.cs.jhu.edu/~langmea/resources/lecture_notes/assembly_olc.pdf
-[20]:	https://github.com/lh3/minimap2
-[21]:	https://doi.org/10.1093/bioinformatics/bty191
-[22]:	http://vast.cs.ucla.edu/sites/default/files/publications/minimap2-acc-approved.pdf
-[23]:	http://datasets.pacb.com.s3.amazonaws.com/2014/c_elegans/list.html
-[24]:	#generate
-[25]:	#gpu-kernel-devel
-[26]:	https://github.com/lh3/minimap2
-[27]:	https://lh3.github.io/minimap2/minimap2.html
-[28]:	https://github.com/lh3/minimap2#limit
-[29]:	https://doi.org/10.1093/bioinformatics/bty191
+[17]:	#cpu-kernel-devel
+[18]:	#limit
+[19]:	#ack
+[20]:	http://www.cs.jhu.edu/~langmea/resources/lecture_notes/assembly_olc.pdf
+[21]:	https://github.com/lh3/minimap2
+[22]:	https://doi.org/10.1093/bioinformatics/bty191
+[23]:	http://vast.cs.ucla.edu/sites/default/files/publications/minimap2-acc-approved.pdf
+[24]:	http://datasets.pacb.com.s3.amazonaws.com/2014/c_elegans/list.html
+[25]:	#generate
+[26]:	#gpu-kernel-devel
+[27]:	#generate
+[28]:	https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-thread-affinity-interface-linux-and-windows
+[29]:	https://github.com/lh3/minimap2
+[30]:	https://lh3.github.io/minimap2/minimap2.html
+[31]:	https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-thread-affinity-interface-linux-and-windows
+[32]:	https://linux.die.net/man/8/numactl
+[33]:	http://man7.org/linux/man-pages/man3/numa.3.html
+[34]:	https://github.com/stanford-mast/Silo
+[35]:	https://github.com/lh3/minimap2#limit
+[36]:	https://doi.org/10.1093/bioinformatics/bty191
 
 [image-1]:	https://img.shields.io/badge/Version-Experimental-green.svg
 [image-2]:	https://img.shields.io/bower/l/bootstrap.svg
 [image-3]:	https://user-images.githubusercontent.com/843780/58130406-c7fa6280-7bd0-11e9-8880-9617bcbd3171.png
 [image-4]:	https://user-images.githubusercontent.com/843780/58130612-4b1bb880-7bd1-11e9-86f4-81fe4f1be4d1.png
 [image-5]:	https://user-images.githubusercontent.com/843780/58130132-2ffc7900-7bd0-11e9-92f5-d5fe437c5785.png
-[image-6]:	https://cdsc.ucla.edu/wp-content/themes/genesis-child/images/logo.png
+[image-6]:	http://vast.cs.ucla.edu/sites/default/themes/CADlab_cadlab/images/logo.png
