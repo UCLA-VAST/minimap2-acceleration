@@ -273,3 +273,7 @@ tags
 
 # Backup files
 ._*
+
+# Built files
+testbed/minimap2
+kernel/cuda/kernel
