@@ -7,11 +7,12 @@
 ### Build testbed and generate test data
 
 ```bash
-# Fetch code
+# Fetch code.
 git clone https://github.com/UCLA-VAST/minimap2-acceleration.git
 
-# Make sure a C compiler, GNU make and zlib development files are installed
-# Build testbed
+# Make sure a C compiler, GNU make and zlib
+#   development files are installed.
+# Build testbed.
 (cd testbed/ && make);
 
 # Generate test data for PacBio genomic reads,
@@ -22,10 +23,13 @@ testbed/minimap2 -ax map-pb ref.fa tgt.fa \
     --chain-dump-limit=1000 > /dev/null
 
 # There are two files generated:
-#   in-1k.txt: the input of the chaining function for 1,000 reads.
-#   out-1k.txt: the output of the corresponding chaining tasks.
-# You can use them to run benchmarks of different kernels,
-#   and compare results to ensure correctness.
+#   in-1k.txt: the input of the chaining function
+#     for 1,000 reads.
+#   out-1k.txt: the output of the corresponding
+#     chaining tasks.
+# You can use them to run benchmarks of different
+#   kernels, and compare results to ensure
+#   correctness.
 ```
 
 ### Build FPGA kernel and run benchmarks
@@ -34,13 +38,13 @@ testbed/minimap2 -ax map-pb ref.fa tgt.fa \
 
 ```bash
 # Make sure a C compiler and CUDA 10 is installed
-# Build CUDA kernel
+# Build CUDA kernel.
 (cd kernel/cuda/ && make);
 
-# Execute the kernel benchmark
+# Execute the kernel benchmark.
 kernel/cuda/kernel in-1k.txt kernel-1k.txt
 
-# Compare the results
+# Compare the results.
 cmp out-1k.txt kernel-1k.txt
 ```
 
@@ -50,19 +54,26 @@ cmp out-1k.txt kernel-1k.txt
 # Make sure Intel Parallel Studio XE is installed
 #   and you have a CPU with AVX2 support.
 
-# Source Intel Parallel Studio XE environment
+# Source Intel Parallel Studio XE environment.
 source /opt/tools/intel/parallel-studio/parallel_studio_xe_2019/psxevars.sh
 
-# Build SIMD kernel
+# Build SIMD kernel.
 (cd kernel/simd/ && make);
 
-# Execute the kernel benchmark with automatic thread control
+# Execute the kernel benchmark
+#   with automatic thread control.
 kernel/simd/kernel in-1k.txt kernel-1k.txt
 
-# Advanced use: execute the kernel benchmark with 14 threads, scatter affinity and NUMA affinity on CPU 1
-KMP_AFFINITY=granularity=fine,scatter OMP_NUM_THREADS=14 numactl --cpubind=1 kernel/simd/kernel in-1k.txt kernel-1k.txt
+# Advanced use: execute the kernel benchmark
+#   with 14 threads, scatter affinity
+#   and NUMA affinity on CPU 1.
+KMP_AFFINITY=granularity=fine,scatter \
+	OMP_NUM_THREADS=14 \
+	numactl --cpubind=1 \
+	kernel/simd/kernel \
+		in-1k.txt kernel-1k.txt
 
-# Compare the results
+# Compare the results.
 cmp out-1k.txt kernel-1k.txt
 ```
 
@@ -240,7 +251,10 @@ This command prints one metric on standard output, which is the total kernel exe
 You may want to have control over how many threads to execute on CPU. You can specify it with an environment variable `OMP_NUM_THREADS`. Besides, if you want to control over the thread affinity with CPU cores, you can specify `KMP_AFFINITY`. You can see [Intel® C++ Compiler 19.0 Developer Guide and Reference][28] for details. For example, the following command runs the kernel on 14 threads, and use scatter affinity for threads:
 
 ```bash
-KMP_AFFINITY=granularity=fine,scatter OMP_NUM_THREADS=14 kernel/simd/kernel in-30k.txt kernel-30k.txt
+KMP_AFFINITY=granularity=fine,scatter \
+	OMP_NUM_THREADS=14 \
+	kernel/simd/kernel \
+		in-30k.txt kernel-30k.txt
 ```
 
 To experiment with NUMA affinity, you can simply bind all execution to a single CPU core with `numactl --cpubind=1`.
