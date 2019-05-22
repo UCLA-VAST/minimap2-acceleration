@@ -10,18 +10,19 @@
 # Fetch code
 git clone https://github.com/UCLA-VAST/minimap2-acceleration.git
 
+# Make sure a C compiler, GNU make and zlib development files are installed
 # Build testbed
-(cd testbed && make);
+(cd testbed/ && make);
 
 # Generate test data for PacBio genomic reads,
 #   just as if invoke the Minimap2 command line tool.
-./testbed/minimap2 -ax map-pb ref.fa tgt.fa \
+testbed/minimap2 -ax map-pb ref.fa tgt.fa \
     --chain-dump-in in-1k.txt \
     --chain-dump-out out-1k.txt \
     --chain-dump-limit=1000 > /dev/null
 
 # There are two files generated:
-#   in-1k.txt: the input of chaining function for 1,000 reads.
+#   in-1k.txt: the input of the chaining function for 1,000 reads.
 #   out-1k.txt: the output of the corresponding chaining tasks.
 # You can use them to run benchmarks of different kernels,
 #   and compare results to ensure correctness.
@@ -30,6 +31,18 @@ git clone https://github.com/UCLA-VAST/minimap2-acceleration.git
 ### Build FPGA kernel and run benchmarks
 
 ### Build GPU kernel and run benchmarks
+
+```bash
+# Make sure a C compiler and CUDA 10 is installed
+# Build CUDA kernel
+(cd kernel/cuda/ && make);
+
+# Execute the kernel benchmark
+kernel/cuda/kernel in-1k.txt kernel-1k.txt
+
+# Compare the results
+cmp out-1k.txt kernel-1k.txt
+```
 
 ### Build CPU SIMD kernel and run benchmarks
 
@@ -43,21 +56,22 @@ git clone https://github.com/UCLA-VAST/minimap2-acceleration.git
 - [Users' Guide][6]
 	- [Obtain and Build Code][7]
 	- [Generate Test Data][8]
-	- [Run FPGA benchmark][9]
-	- [Run GPU benchmark][10]
-	- [Run CPU benchmark][11]
+	- [Run FPGA Benchmark][9]
+	- [Run GPU Benchmark][10]
+	- [Run CPU Benchmark][11]
 	- [Evaluate Overlapping Results][12]
 - [Developers' Guide][13]
 	- [Directory Layout][14]
 	- [Testbed][15]
-- [Limitations and Notes][16]
-- [Acknowledgement][17]
+	- [GPU Kernel][16]
+- [Limitations and Notes][17]
+- [Acknowledgement][18]
 
 ## <a name="general"></a> General Information
 
 ### <a name="intro"></a> Introduction
 
-In genome sequencing, it is a crucial but time-consuming task to [detect potential overlaps][18] between any pair of the input reads, especially those that are ultra-long. The state-of-the-art overlapping tool [Minimap2][19] outperforms other popular tools in speed and accuracy. It has a single computing hot-spot, [chaining][20], that takes 70% of the time and needs to be accelerated.
+In genome sequencing, it is a crucial but time-consuming task to [detect potential overlaps][19] between any pair of the input reads, especially those that are ultra-long. The state-of-the-art overlapping tool [Minimap2][20] outperforms other popular tools in speed and accuracy. It has a single computing hot-spot, [chaining][21], that takes 70% of the time and needs to be accelerated.
 
 We modify the chaining algorithm to reorder the operation sequence that transforms the algorithm into its hardware-friendly equivalence. We customize a fine-grained task dispatching scheme which could keep parallel PEs busy while satisfying the on-chip memory restriction. Moreover, we map the algorithm to a fully pipelined streaming architecture on FPGA using HLS, which achieves significant performance improvement. The same methodology applies to GPU and CPU SIMD implementation, and we also achieve decent speedups.
 
@@ -65,7 +79,7 @@ In this open source repository, we release (1) our HLS chaining algorithm implem
 
 If you want to check out details or use our acceleration in your work, please see our paper and cite:
 
-> L. Guo, J. Lau, Z. Ruan, P. Wei, and J. Cong, “[Hardware Acceleration of Long Read Pairwise Overlapping in Genome Sequencing: A Race Between FPGA and GPU][21],” in 2019 IEEE 27th International Symposium On Field-Programmable Custom Computing Machines (FCCM), April 2019.
+> L. Guo, J. Lau, Z. Ruan, P. Wei, and J. Cong, “[Hardware Acceleration of Long Read Pairwise Overlapping in Genome Sequencing: A Race Between FPGA and GPU][22],” in 2019 IEEE 27th International Symposium On Field-Programmable Custom Computing Machines (FCCM), April 2019.
 
 ### <a name="backg"></a> Background
 
@@ -106,22 +120,27 @@ cd minimap2-acceleration
 
 #### Build Testbed
 
-You need to have a C compiler, GNU make and zlib development files installed to build the testbed software:
+You need to have a C compiler, GNU make and zlib development files installed to build the testbed software. You can build the testbed with the following command:
 
 ```bash
-(cd testbed && make);
+(cd testbed/ && make);
 ```
-
 
 #### Build FPGA Kernel
 
 #### Build GPU Kernel
 
+You need to have a C compiler and CUDA 10 installed. You can build the GPU kernel benchmark with the following command:
+
+```bash
+(cd kernel/cuda/ && make);
+```
+
 #### Build CPU Kernel
 
 ### <a name="generate"></a> Generate Test Data
 
-We tested our implementation with the public Caenorhabditis Elegans 40x Sequence Coverage dataset obtained from a PacBio sequencer. You may want to first obtain the dataset from [here][22]. You can use any of the download tools it recommended on the page to obtain the `.fastq` files, and combine them with the `cat` command. In the following text, we assume you have the combined genome read file at `~/c_elegans40x.fastq`.
+We tested our implementation with the public Caenorhabditis Elegans 40x Sequence Coverage dataset obtained from a PacBio sequencer. You may want to first obtain the dataset from [here][23]. You can use any of the download tools it recommended on the page to obtain the `.fastq` files, and combine them with the `cat` command. In the following text, we assume you have the combined genome read file at `~/c_elegans40x.fastq`.
 
 To generate the test data for later benchmarking, you can run:
 
@@ -133,13 +152,41 @@ To generate the test data for later benchmarking, you can run:
     --chain-dump-limit=30000 > /dev/null
 ```
 
-This command will generate `in-30k.txt`, the input file of the chaining function for 30,000 reads that we will use later in the benchmark sections. Moreover, `out-30k.txt`, the expected output file for the corresponding chaining tasks. You can compare it with the output from kernel executions.
+This command generates `in-30k.txt`, the input file of the chaining function for 30,000 reads that we use later in the benchmark sections. Moreover, `out-30k.txt`, the expected output file for the corresponding chaining tasks. You can compare it with the output from kernel executions.
 
-### <a name="fpga"></a> Run FPGA benchmark
+### <a name="fpga"></a> Run FPGA Benchmark
 
-### <a name="gpu"></a> Run GPU benchmark
+### <a name="gpu"></a> Run GPU Benchmark
 
-### <a name="cpu"></a> Run CPU benchmark
+With the test data generated in [Generate Test Data][24] section, you can execute the built GPU kernel with:
+
+```bash
+kernel/cuda/kernel in-30k.txt kernel-30k.txt
+```
+
+This command reads the input anchors from file `in-30k.txt` to host memory, transfer the data to GPU global memory through PCIe, run the GPU kernel for computation, transfer it back to host memory and write computed scores and predecessors into file `kernel-30k.txt`.
+
+This command prints three metrics on standard output. The first time is from host memory to GPU global memory through PCIe. The second is the transferring time plus GPU kernel total execution time. The third is all time end-to-end, including GPU/host communication and GPU execution.
+
+For example, with NVIDIA Tesla P100 GPU, the output is:
+
+```
+****** kernel took 0.834192 seconds to transfer in data
+ ***** kernel took 2.032814 seconds to transfer in and execute
+ ***** kernel took 2.688967 seconds for end-to-end
+```
+
+NOTE: If you are using a GPU other than NVIDIA Tesla P100 GPU, you may want to tune the GPU specific parameters. Please see `kernel/cuda/include/common.h` and [GPU Kernel][25] section for details.
+
+To check the correctness, you can run:
+
+```bash
+cmp out-30k.txt kernel-30k.txt
+```
+
+If it outputs nothing as expected, this means the output of the acceleration kernel is correct.
+
+### <a name="cpu"></a> Run CPU Benchmark
 
 ### <a name="eval"></a> Evaluate Overlapping Results
 
@@ -153,19 +200,22 @@ This command will generate `in-30k.txt`, the input file of the chaining function
 	* **testbed/chain.c**: the source file of the modifications in the chaining algorithm, and also the code logic for dumping input/output files.
 * **kernel/hls**: an HLS implementation of Minimap2 chaining algorithm for Xilinx FPGA.
 * **kernel/cuda**: a CUDA implementation of Minimap2 chaining algorithm for NVIDIA Tesla P100 GPU. Also tested on K40c and V100 GPU with different parameters.
+	* **kernel/cuda/device/device\_kernel.cu**: the GPU kernel for chaining algorithm.
+	* **kernel/cuda/device/device\_kernel\_wrapper.cu**: the wrapper function for transferring data, executing GPU kernel, and the measurement of execution time.
+	* **kernel/cuda/include/common.h**: the parameters for GPU execution, including the CUDA stream count, the block size, the thread unrolling factor and the tiling size.
 * **kernel/simd**: a SIMD implementation using pragmas of Intel C Compiler.
 
 ### <a name="testbed"></a> Testbed
 
 #### Command Line Tool
 
-The testbed is a modified version of [Minimap2][23] software and inherits most of the command line options from Minimap2. Therefore, you can check out the [manual reference pages][24] of Minimap2 to see what is available in the testbed program. You can simply use it as if you invoke the Minimap2 command line tool.
+The testbed is a modified version of [Minimap2][26] software and inherits most of the command line options from Minimap2. Therefore, you can check out the [manual reference pages][27] of Minimap2 to see what is available in the testbed program. You can simply use it as if you invoke the Minimap2 command line tool.
 
 The modified software parse three additional command line options:
 
 * `--chain-dump-in`: the output file to store input of the chaining algorithm. In function invocation of `mm_chain_dp` function, we output its arguments to the specified file. The format of this file is documented later.
 * `--chain-dump-out`: the output file to store the output of the chaining algorithm. After the function `mm_chain_dp` computed the desired results with unoptimized code, we dump the results into this file. The format is documented later. By comparing accelerators’ result with this file, we can know if we obtained the correct answer.
-* `--chain-dump-limit`: this option specify input and output of how many reads is dumped into the files.  For example, if you specify it as 1000, the tool dumps anchors and chaining output for 1000 reads in the reference file (first argument) to all reads in the target file (second argument).
+* `--chain-dump-limit`: this option specifies input and output of how many reads is dumped into the files.  For example, if you specify it as 1000, the tool dumps anchors and chaining output for 1000 reads in the reference file (first argument) to all reads in the target file (second argument).
 
 We modified the chaining algorithm in the testbed program to be equivalent to our implemented accelerations. Without using the additional command options, you can execute it to simulate the end-to-end output if you integrate our kernels into the original software.
 
@@ -205,12 +255,54 @@ A sample dumped output file:
 ...
 ```
 
+### <a name="gpu-kernel-devel"></a>GPU Kernel 
+
+#### Command Line Tool
+
+The command line interface for the benchmark is simple. You can invoke the command with two files as options. The first option is the dumped input file from the testbed program. The second option is the path to the file you want the kernel to dump results. Please note that do not pass the dumped output file as the second option. You need that file to compare for correctness with the output of the kernel. For example:
+
+```
+./kernel/cuda/kernel in-30k.txt kernel-30k.txt
+```
+
+#### Communication Layout
+
+In our GPU kernel implementation, we use a similar memory data layout to our FPGA design. Please note that in software integration, this scheme is not required as GPU can schedule tasks itself. While in this benchmark, for reducing the task switching overhead and have a fair comparison with FPGA, the workload are batched and tiled into chunks as done in FPGA kernel design. For batching, we use `STREAM_NUM * BLOCK_NUM * THREAD_FACTOR` as the task count. We iterate and concatenate reads to the end of the first idle task queue. Then, we split tasks into chunks of `TILE_SIZE` and invoke the kernel to process tasks chuck by chuck. Each chunk adds its last 64 elements to the front of the next chuck so that the scores can be correctly computed.
+
+#### GPU Specific Parameters
+
+There are several GPU specific parameters in the code. Before you port the benchmark into another device, you may need to modify them for better performance.
+
+In `kernel/cuda/include/common.h`, you can modify the parameters related to device properties:
+
+* `STREAM_NUM`: a parameter to decide how many CUDA streams are mapped to task-level parallelism. In most cases, it should be 1 because using only thread block is sufficient.
+* `BLOCK_NUM`: a parameter to decide how many CUDA thread blocks are generated to utilize task-level parallelism. This value should be equal to, or multiple of the count of streaming multiprocessor (SM) times the maximum block count in one SM. For example, for NVIDIA Tesla P100, it can be 1792. For V100, it can be 2560. For K40c, it can be 240.
+* `THREAD_FACTOR`: a parameter to decide if task-level parallelism is mapped into CUDA threads in one thread block. For example, if this value is 2, there are 128 threads (4 warps) in one thread block handling two different tasks. For GPUs before Kepler architecture, for example, NVIDIA Tesla K40c, there are only 16 thread blocks in one SM. In order to achieve full occupancy, this value should be 2 to have 64 warps in one SM. For recent GPUs, this value should be 1.
+* `TILE_SIZE`: a parameter to determine how many anchors per task are processed in one batch. We recommend 1024.
+
+Sample configuration for K40c:
+
+```c
+#define STREAM_NUM (1)
+#define BLOCK_NUM (240)
+#define THREAD_FACTOR (2)
+#define TILE_SIZE (1024)
+```
+
+In `kernel/cuda/device/device_kernel.cu`, you can decide if you use shared memory to buffer global memory access. If you want so, you can uncomment the line:
+
+```c
+//#define USE_LOCAL_BUFFER
+```
+
+However, this may reduce occupancy. You can experiment to see if the size of shared memory in your device is sufficient.
+
 ## <a name="limit"></a> Limitations and Notes
 
-* Our accelerated kernels do not support spliced long reads. For example, acceleration of `Minimap2 -ax splice ref.fa tgt.fa ` is not yet supported.
-* Our accelerations are not yet integrated into the software. The code in this repository contains kernels for the chaining function itself, which can be driven by testbed generated chaining data.
+* Our accelerated kernels do not support spliced long reads. For example, acceleration of `minimap2 -ax splice ref.fa tgt.fa` is not yet supported.
+* Our accelerations are not yet integrated into the software. The code in this repository contains kernels for the chaining function itself, which can be driven by testbed generated chaining data. File input and output takes significant time in benchmarking, and we don’t count the time in the kernel execution. To achieve end-to-end acceleration, integration is required.
 * We use an assumption that the quality of output does not degrade when we choose the lookup depth of the dynamic programming algorithm to be 64, based on the claim in Li, H. (2018).
-* We inherit most of [limitations of Minimap2][25].
+* We inherit most of [limitations of Minimap2][28].
 * For integration, we recommend implementing the whole `mm_chain_dp` function in all accelerations solutions to reduce output communication. The reason we choose the score value as the output point is that we can better evaluate the correctness in fine grain. We also recommend integrating the seeding part.
 
 ## <a name="ack"></a> Acknowledgement
@@ -219,7 +311,7 @@ We directly used and modified the code from Heng Li’s Minimap2 to generate tes
 
 This research is supported by CRISP, one of six centers in JUMP, a Semiconductor Research Corporation (SRC) program and the contributions from the member companies under the Center for Domain-Specific Computing (CDSC) Industrial Partnership Program.
 
-> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][26]
+> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][29]
 
 [1]:	#started
 [2]:	#general
@@ -236,17 +328,20 @@ This research is supported by CRISP, one of six centers in JUMP, a Semiconductor
 [13]:	#develg
 [14]:	#layout
 [15]:	#testbed
-[16]:	#limit
-[17]:	#ack
-[18]:	http://www.cs.jhu.edu/~langmea/resources/lecture_notes/assembly_olc.pdf
-[19]:	https://github.com/lh3/minimap2
-[20]:	https://doi.org/10.1093/bioinformatics/bty191
-[21]:	http://vast.cs.ucla.edu/sites/default/files/publications/minimap2-acc-approved.pdf
-[22]:	http://datasets.pacb.com.s3.amazonaws.com/2014/c_elegans/list.html
-[23]:	https://github.com/lh3/minimap2
-[24]:	https://lh3.github.io/minimap2/minimap2.html
-[25]:	https://github.com/lh3/minimap2#limit
-[26]:	https://doi.org/10.1093/bioinformatics/bty191
+[16]:	#gpu-kernel-devel
+[17]:	#limit
+[18]:	#ack
+[19]:	http://www.cs.jhu.edu/~langmea/resources/lecture_notes/assembly_olc.pdf
+[20]:	https://github.com/lh3/minimap2
+[21]:	https://doi.org/10.1093/bioinformatics/bty191
+[22]:	http://vast.cs.ucla.edu/sites/default/files/publications/minimap2-acc-approved.pdf
+[23]:	http://datasets.pacb.com.s3.amazonaws.com/2014/c_elegans/list.html
+[24]:	#generate
+[25]:	#gpu-kernel-devel
+[26]:	https://github.com/lh3/minimap2
+[27]:	https://lh3.github.io/minimap2/minimap2.html
+[28]:	https://github.com/lh3/minimap2#limit
+[29]:	https://doi.org/10.1093/bioinformatics/bty191
 
 [image-1]:	https://img.shields.io/badge/Version-Experimental-green.svg
 [image-2]:	https://img.shields.io/bower/l/bootstrap.svg
