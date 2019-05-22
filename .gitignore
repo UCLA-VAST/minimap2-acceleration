@@ -277,3 +277,4 @@ tags
 # Built files
 testbed/minimap2
 kernel/cuda/kernel
+kernel/simd/kernel
