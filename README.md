@@ -255,7 +255,7 @@ A sample dumped output file:
 ...
 ```
 
-### <a name="gpu-kernel-devel"></a>GPU Kernel 
+### <a name="gpu-kernel-devel"></a>GPU Kernel
 
 #### Command Line Tool
 
@@ -307,11 +307,13 @@ However, this may reduce occupancy. You can experiment to see if the size of sha
 
 ## <a name="ack"></a> Acknowledgement
 
-We directly used and modified the code from Heng Li’s Minimap2 to generate test data for chaining algorithm. We also implement all kernels of the chaining algorithm based on Heng Li’s paper.
+We directly used and modified the code from Heng Li’s Minimap2 to generate test data for chaining algorithm. We also implement all kernels of the chaining algorithm based on Heng Li’s paper:
+
+> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][29]
 
 This research is supported by CRISP, one of six centers in JUMP, a Semiconductor Research Corporation (SRC) program and the contributions from the member companies under the Center for Domain-Specific Computing (CDSC) Industrial Partnership Program.
 
-> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][29]
+![][image-6]
 
 [1]:	#started
 [2]:	#general
@@ -348,3 +350,4 @@ This research is supported by CRISP, one of six centers in JUMP, a Semiconductor
 [image-3]:	https://user-images.githubusercontent.com/843780/58130406-c7fa6280-7bd0-11e9-8880-9617bcbd3171.png
 [image-4]:	https://user-images.githubusercontent.com/843780/58130612-4b1bb880-7bd1-11e9-86f4-81fe4f1be4d1.png
 [image-5]:	https://user-images.githubusercontent.com/843780/58130132-2ffc7900-7bd0-11e9-92f5-d5fe437c5785.png
+[image-6]:	https://cdsc.ucla.edu/wp-content/themes/genesis-child/images/logo.png
