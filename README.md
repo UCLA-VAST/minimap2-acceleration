@@ -10,8 +10,6 @@
 # Fetch code.
 git clone https://github.com/UCLA-VAST/minimap2-acceleration.git
 
-# Make sure a C compiler, GNU make and zlib
-#   development files are installed.
 # Build testbed.
 (cd testbed/ && make);
 
@@ -37,7 +35,6 @@ testbed/minimap2 -ax map-pb ref.fa tgt.fa \
 ### Build GPU kernel and run benchmarks
 
 ```bash
-# Make sure a C compiler and CUDA 10 is installed
 # Build CUDA kernel.
 (cd kernel/cuda/ && make);
 
@@ -51,9 +48,6 @@ cmp out-1k.txt kernel-1k.txt
 ### Build CPU SIMD kernel and run benchmarks
 
 ```bash
-# Make sure Intel Parallel Studio XE is installed
-#   and you have a CPU with AVX2 support.
-
 # Source Intel Parallel Studio XE environment.
 source /opt/tools/intel/parallel-studio/parallel_studio_xe_2019/psxevars.sh
 
@@ -66,7 +60,7 @@ kernel/simd/kernel in-1k.txt kernel-1k.txt
 
 # Advanced use: execute the kernel benchmark
 #   with 14 threads, scatter affinity
-#   and NUMA affinity on CPU 1.
+#   and CPU binding for NUMA optimization.
 KMP_AFFINITY=granularity=fine,scatter \
 	OMP_NUM_THREADS=14 \
 	numactl --cpubind=1 \
@@ -457,7 +451,7 @@ If it outputs something that starts with `flags`, the CPU can run AVX2 programs.
 ## <a name="limit"></a> Limitations and Notes
 
 * Our accelerated kernels do not support spliced long reads. For example, acceleration of `minimap2 -ax splice ref.fa tgt.fa` is not yet supported.
-* Our accelerations are not yet integrated into the software. The code in this repository contains kernels for the chaining function itself, which can be driven by testbed generated chaining data. File input and output takes significant time in benchmarking, and we don’t count the time in the kernel execution. To achieve end-to-end acceleration, integration is required.
+* Our accelerations are not yet integrated into the software. The code in this repository contains kernels for the chaining function itself, which can be driven by testbed generated chaining data. File input and output takes significant time in benchmarking, and we don’t count the time as part of the kernel execution. To achieve end-to-end acceleration, integration is required.
 * We use an assumption that the quality of output does not degrade when we choose the lookup depth of the dynamic programming algorithm to be 64, based on the claim in Li, H. (2018).
 * We inherit most of [limitations of Minimap2][35].
 * For integration, we recommend implementing the whole `mm_chain_dp` function in all accelerations solutions to reduce output communication. The reason we choose the score value as the output point is that we can better evaluate the correctness in fine grain. We also recommend integrating the seeding part.
