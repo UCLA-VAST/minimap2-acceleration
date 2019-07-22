@@ -278,3 +278,8 @@ tags
 testbed/minimap2
 kernel/cuda/kernel
 kernel/simd/kernel
+kernel/hls/rpt
+kernel/hls/bin
+kernel/hls/bit
+kernel/hls/obj
+kernel/hls/tmp
