@@ -69,8 +69,14 @@ CLCXX_HW_OPT = -t hw --temp_dir $(abspath $(TMP)/$(HW_XCLBIN:.xclbin=))
 
 ############################## phony targets ##############################
 
+csim-target: $(BIN)/$(HOST_BIN) $(BIT)/$(CSIM_XCLBIN) $(BIN)/emconfig.json
+	@rm -f sdaccel_profile_summary.{csv,html}
+
 csim: $(BIN)/$(HOST_BIN) $(BIT)/$(CSIM_XCLBIN) $(BIN)/emconfig.json
 	ulimit -s unlimited;. $(XILINX_SDX)/settings64.sh;XCL_EMULATION_MODE=sw_emu $(BIN)/$(HOST_BIN) $(BIT)/$(CSIM_XCLBIN) $(HOST_ARGS)
+	@rm -f sdaccel_profile_summary.{csv,html}
+
+cosim-target: $(BIN)/$(HOST_BIN) $(BIT)/$(COSIM_XCLBIN) $(BIN)/emconfig.json
 	@rm -f sdaccel_profile_summary.{csv,html}
 
 cosim: $(BIN)/$(HOST_BIN) $(BIT)/$(COSIM_XCLBIN) $(BIN)/emconfig.json

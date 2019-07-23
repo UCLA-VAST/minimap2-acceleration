@@ -32,6 +32,39 @@ testbed/minimap2 -ax map-pb ref.fa tgt.fa \
 
 ### Build FPGA kernel and run benchmarks
 
+```bash
+# Set up your Xilinx SDx environment.
+source /opt/tools/xilinx/SDx/2018.3/settings64.sh
+ulimit -s unlimited
+
+# Build HLS kernel for software emulation.
+(cd kernel/hls/ && make csim-target);
+
+# Simulate the kernel benchmark in software.
+XCL_EMULATION_MODE=sw_emu kernel/hls/bin/2018.3/vcu1525/kernel \
+	kernel/hls/bit/2018.3/vcu1525/kernel-csim.xclbin \
+	in-1k.txt kernel-1k.txt
+
+# Build HLS kernel for hardware emulation and run.
+(cd kernel/hls/ && make cosim-target);
+XCL_EMULATION_MODE=hw_emu kernel/hls/bin/2018.3/vcu1525/kernel \
+	kernel/hls/bit/2018.3/vcu1525/kernel-cosim.xclbin \
+	in-1k.txt kernel-1k.txt
+
+# Generate bitstream and run on board.
+(cd kernel/hls/ && make bitstream);
+kernel/hls/bin/2018.3/vcu1525/kernel \
+	kernel/hls/bit/2018.3/vcu1525/kernel-hw.xclbin \
+	in-1k.txt kernel-1k.txt
+
+# The result is slightly different from out-1k.txt
+#   since we applied frequency optimizations,
+#   but they are equivalent in functionality.
+# If you want to reproduce the exact result,
+#   comment out OPTIMIZE_DSP in kernel/hls/src/device_kernel.cpp
+#   and modify the code accordingly.
+```
+
 ### Build GPU kernel and run benchmarks
 
 ```bash
@@ -154,6 +187,31 @@ You need to have a C compiler, GNU make and zlib development files installed to 
 
 #### Build FPGA Kernel
 
+You need to have SDAccel, Vivado HLS and Vivado installed. We use SDAccel as the interface for the kernel to communicate with the host. Before you get started, you may need to source the environment file provided by the tools, for example:
+
+```bash
+source /opt/tools/xilinx/SDx/2018.3/settings64.sh
+ulimit -s unlimited
+```
+
+For software emulation, you can build the kernel with the following command:
+
+```bash
+(cd kernel/hls/ && make csim-target);
+```
+
+For hardware emulation:
+
+```bash
+(cd kernel/hls/ && make cosim-target);
+```
+
+And for bitstream generation:
+
+```bash
+(cd kernel/hls/ && make bitstream);
+```
+
 #### Build GPU Kernel
 
 You need to have a C compiler and CUDA 10 installed. You can build the GPU kernel benchmark with the following command:
@@ -196,9 +254,38 @@ This command generates `in-30k.txt`, the input file of the chaining function for
 
 ### <a name="fpga"></a> Run FPGA Benchmark
 
+With the test data generated in [Generate Test Data][25] section, you can simulate the built HLS kernel on CPU with:
+```bash
+
+# Simulate the kernel benchmark in software.
+XCL_EMULATION_MODE=sw_emu kernel/hls/bin/2018.3/vcu1525/kernel \
+	kernel/hls/bit/2018.3/vcu1525/kernel-csim.xclbin \
+	in-30k.txt kernel-30k.txt
+```
+
+This command reads the input anchors from file `in-30k.txt` to host memory, simulate transferring of the data to FPGA onboard memory through PCIe, simulate the kernel for computation, transfer it back to host memory and write computed scores and predecessors into file `kernel-30k.txt`.
+
+You may need to generate smaller data for hardware emulation because it runs simulation underneath. Using a large data set will result in long simulation times. You can do the emulation with:
+
+```bash
+XCL_EMULATION_MODE=hw_emu kernel/hls/bin/2018.3/vcu1525/kernel \
+	kernel/hls/bit/2018.3/vcu1525/kernel-cosim.xclbin \
+	in-small.txt kernel-small.txt
+```
+
+For onboard execution, you can run:
+
+```bash
+kernel/hls/bin/2018.3/vcu1525/kernel \
+	kernel/hls/bit/2018.3/vcu1525/kernel-hw.xclbin \
+	in-30k.txt kernel-30k.txt
+```
+
+Note that the result from FPGA kernel is slightly different from the file testbed generated. We applied frequency optimizations, which makes the result different numerically but equivalent in functionality. If you expect a exact result, you can modify the code and comment out `OPTIMIZE_DSP` in `kernel/hls/src/device_kernel.cpp` file.
+
 ### <a name="gpu"></a> Run GPU Benchmark
 
-With the test data generated in [Generate Test Data][25] section, you can execute the built GPU kernel with:
+With the test data generated in [Generate Test Data][26] section, you can execute the built GPU kernel with:
 
 ```bash
 kernel/cuda/kernel in-30k.txt kernel-30k.txt
@@ -216,7 +303,7 @@ For example, with NVIDIA Tesla P100 GPU, the output is:
  ***** kernel took 2.688967 seconds for end-to-end
 ```
 
-NOTE: If you are using a GPU other than NVIDIA Tesla P100 GPU, you may want to tune the GPU specific parameters. Please see `kernel/cuda/include/common.h` and [GPU Kernel][26] section for details.
+NOTE: If you are using a GPU other than NVIDIA Tesla P100 GPU, you may want to tune the GPU specific parameters. Please see `kernel/cuda/include/common.h` and [GPU Kernel][27] section for details.
 
 To check the correctness, you can run:
 
@@ -228,7 +315,7 @@ If it outputs nothing as expected, this means the output of the acceleration ker
 
 ### <a name="cpu"></a> Run CPU Benchmark
 
-With the test data generated in [Generate Test Data][27] section, you can execute the built CPU SIMD kernel with:
+With the test data generated in [Generate Test Data][28] section, you can execute the built CPU SIMD kernel with:
 
 ```bash
 kernel/simd/kernel in-30k.txt kernel-30k.txt
@@ -242,7 +329,7 @@ This command prints one metric on standard output, which is the total kernel exe
  ***** kernel took 4.358382 seconds to finish
 ```
 
-You may want to have control over how many threads to execute on CPU. You can specify it with an environment variable `OMP_NUM_THREADS`. Besides, if you want to control over the thread affinity with CPU cores, you can specify `KMP_AFFINITY`. You can see [Intel® C++ Compiler 19.0 Developer Guide and Reference][28] for details. For example, the following command runs the kernel on 14 threads, and use scatter affinity for threads:
+You may want to have control over how many threads to execute on CPU. You can specify it with an environment variable `OMP_NUM_THREADS`. Besides, if you want to control over the thread affinity with CPU cores, you can specify `KMP_AFFINITY`. You can see [Intel® C++ Compiler 19.0 Developer Guide and Reference][29] for details. For example, the following command runs the kernel on 14 threads, and use scatter affinity for threads:
 
 ```bash
 KMP_AFFINITY=granularity=fine,scatter \
@@ -283,7 +370,7 @@ If it outputs nothing as expected, this means the output of the acceleration ker
 
 #### Command Line Tool
 
-The testbed is a modified version of [Minimap2][29] software and inherits most of the command line options from Minimap2. Therefore, you can check out the [manual reference pages][30] of Minimap2 to see what is available in the testbed program. You can simply use it as if you invoke the Minimap2 command line tool.
+The testbed is a modified version of [Minimap2][30] software and inherits most of the command line options from Minimap2. Therefore, you can check out the [manual reference pages][31] of Minimap2 to see what is available in the testbed program. You can simply use it as if you invoke the Minimap2 command line tool.
 
 The modified software parse three additional command line options:
 
@@ -303,7 +390,7 @@ The dumped input file is an EOF terminated plain text file. It consists of multi
 
 For each block, the first line is five numbers, which is `n, avg_qspan, max_dist_x, max_dist_y, bw` used in the chaining function. `n` is an integer for the count of anchors, `avg_qspan` is a floating point number for the average length of anchors used in the score computation, and the three remaining parameters are integer thresholds used in the Minimap2 chaining algorithm.
 
-Following is `n` lines, each line is consists of four integers separated with a tab character. The numbers are `x, y, w, tag` as defined in the paper, indicating an exact match between read strings a and b of length w: a[`x`-`w`+1] .. a[`x`] = b[`y`-`w`+1] .. b[`y`], and anchors with different tag value are from different read pairs.
+Following is `n` lines, each line is consists of four integers separated with a tab character. The numbers are `x, y, w, tag` as defined in the paper, indicating an exact match between read strings a and b of length w: a[`x`-`w`+1] .. a[`x`] = b[`y`-`w`+1] .. b[`y`], and anchors with different tag value are from different read pairs. At the ending of one task, there will be a line of `EOR`.
 
 A sample dumped input file:
 
@@ -312,13 +399,15 @@ A sample dumped input file:
 2	52	41	52
 2	61	35	61
 ...
+EOR
+...
 ```
 
 ##### Output File
 
 The dumped output file is also an EOF terminated plain text file. It also has multiple continuous blocks until the end of the file. 
 
-The first line is an integer `n` which is the count of anchors. Following is `n` lines, each line is two integer values `f` and `p`. `f` is the score for the best chain ending at the corresponding anchor computed in the chaining algorithm, while `p` is the best predecessor anchor for this chain (-1 means the chain has only one anchor which is the current one).
+The first line is an integer `n` which is the count of anchors. Following is `n` lines, each line is two integer values `f` and `p`. `f` is the score for the best chain ending at the corresponding anchor computed in the chaining algorithm, while `p` is the best predecessor anchor for this chain (-1 means the chain has only one anchor which is the current one). At the ending of one task, there will be a line of `EOR`.
 
 A sample dumped output file:
 
@@ -326,6 +415,8 @@ A sample dumped output file:
 21949
 41	-1
 50	0
+...
+EOR
 ...
 ```
 
@@ -386,7 +477,7 @@ The command line interface for the benchmark is simple. You can invoke the comma
 To control over parallelization, you can pass environment variables. For example:
 
 * `OMP_NUM_THREADS`: the count of spawned OpenMP threads. `OMP_NUM_THREADS=14` instructs OpenMP to create 14 threads as the thread pool for computation of tasks.
-* `KMP_AFFINITY`: a parameter to restrict execution of threads to a subset of physical cores so that the cache can be reused after context switching. See [Intel C++ Compiler 19.0 Developer Guide and Reference][31] for details.
+* `KMP_AFFINITY`: a parameter to restrict execution of threads to a subset of physical cores so that the cache can be reused after context switching. See [Intel C++ Compiler 19.0 Developer Guide and Reference][32] for details.
 
 Besides, you may want to modify the parallelization scheduling strategy used by OpenMP. You can modify the `schedule(guided)` parameter in `kernel/simd/src/host_kernel.cpp`:
 
@@ -394,7 +485,7 @@ Besides, you may want to modify the parallelization scheduling strategy used by 
 #pragma omp parallel for schedule(guided)
 ```
 
-To restrict the execution of the program to CPU cores in specified NUMA nodes, you can use [`numactl(8)`][32] tool.
+To restrict the execution of the program to CPU cores in specified NUMA nodes, you can use [`numactl(8)`][33] tool.
 
 If you want to implement thread affinity in the original Minimap2 software, you can modify `kthread.c` file with changes similar to:
 
@@ -428,7 +519,7 @@ index ffdf940..7a9373c 100644
         } else {
 ```
 
-If you want to implement NUMA optimizations in the original Minimap2 software, you need to allocate all data passed to the chaining algorithm in the corresponding NUMA memory node. To do so, you can use [`numa(3)`][33] to allocate, or [Silo][34] for cross-platform support.
+If you want to implement NUMA optimizations in the original Minimap2 software, you need to allocate all data passed to the chaining algorithm in the corresponding NUMA memory node. To do so, you can use [`numa(3)`][34] to allocate, or [Silo][35] for cross-platform support.
 
 #### Memory Alignment
 
@@ -453,14 +544,14 @@ If it outputs something that starts with `flags`, the CPU can run AVX2 programs.
 * Our accelerated kernels do not support spliced long reads. For example, acceleration of `minimap2 -ax splice ref.fa tgt.fa` is not yet supported.
 * Our accelerations are not yet integrated into the software. The code in this repository contains kernels for the chaining function itself, which can be driven by testbed generated chaining data. File input and output takes significant time in benchmarking, and we don’t count the time as part of the kernel execution. To achieve end-to-end acceleration, integration is required.
 * We use an assumption that the quality of output does not degrade when we choose the lookup depth of the dynamic programming algorithm to be 64, based on the claim in Li, H. (2018).
-* We inherit most of [limitations of Minimap2][35].
+* We inherit most of [limitations of Minimap2][36].
 * For integration, we recommend implementing the whole `mm_chain_dp` function in all accelerations solutions to reduce output communication. The reason we choose the score value as the output point is that we can better evaluate the correctness in fine grain. We also recommend integrating the seeding part.
 
 ## <a name="ack"></a> Acknowledgement
 
 We directly used and modified the code from Heng Li’s Minimap2 to generate test data for chaining algorithm. We also implement all kernels of the chaining algorithm based on Heng Li’s paper:
 
-> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][36]
+> Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. *Bioinformatics*, **34**:3094-3100. [doi:10.1093/bioinformatics/bty191][37]
 
 This research is supported by CRISP, one of six centers in JUMP, a Semiconductor Research Corporation (SRC) program and the contributions from the member companies under the Center for Domain-Specific Computing (CDSC) Industrial Partnership Program.
 
@@ -493,17 +584,18 @@ This research is supported by CRISP, one of six centers in JUMP, a Semiconductor
 [23]:	http://vast.cs.ucla.edu/sites/default/files/publications/minimap2-acc-approved.pdf
 [24]:	http://datasets.pacb.com.s3.amazonaws.com/2014/c_elegans/list.html
 [25]:	#generate
-[26]:	#gpu-kernel-devel
-[27]:	#generate
-[28]:	https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-thread-affinity-interface-linux-and-windows
-[29]:	https://github.com/lh3/minimap2
-[30]:	https://lh3.github.io/minimap2/minimap2.html
-[31]:	https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-thread-affinity-interface-linux-and-windows
-[32]:	https://linux.die.net/man/8/numactl
-[33]:	http://man7.org/linux/man-pages/man3/numa.3.html
-[34]:	https://github.com/stanford-mast/Silo
-[35]:	https://github.com/lh3/minimap2#limit
-[36]:	https://doi.org/10.1093/bioinformatics/bty191
+[26]:	#generate
+[27]:	#gpu-kernel-devel
+[28]:	#generate
+[29]:	https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-thread-affinity-interface-linux-and-windows
+[30]:	https://github.com/lh3/minimap2
+[31]:	https://lh3.github.io/minimap2/minimap2.html
+[32]:	https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-thread-affinity-interface-linux-and-windows
+[33]:	https://linux.die.net/man/8/numactl
+[34]:	http://man7.org/linux/man-pages/man3/numa.3.html
+[35]:	https://github.com/stanford-mast/Silo
+[36]:	https://github.com/lh3/minimap2#limit
+[37]:	https://doi.org/10.1093/bioinformatics/bty191
 
 [image-1]:	https://img.shields.io/badge/Version-Experimental-green.svg
 [image-2]:	https://img.shields.io/bower/l/bootstrap.svg
