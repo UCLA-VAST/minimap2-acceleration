@@ -4,7 +4,7 @@ APP ?= kernel
 SDA_VER ?= 2018.3
 XILINX_SDX ?= /opt/tools/xilinx/SDx/$(SDA_VER)
 XILINX_XRT ?= /opt/xilinx/xrt
-XDEVICE ?= xilinx:vcu1525:xdma:201830.1
+XDEVICE ?= xilinx:vcu1525:xdma:201830_1
 
 CSIM_XCLBIN ?= $(APP)-csim.xclbin
 COSIM_XCLBIN ?= $(APP)-cosim.xclbin
@@ -38,25 +38,8 @@ HOST_CFLAGS += -I$(subst SDx,Vivado_HLS,$(XILINX_SDX))/include
 HOST_LFLAGS += -L$(XILINX_XRT)/lib -lxilinxopencl -lrt
 HOST_LFLAGS += -L$(XILINX_SDX)/runtime/lib/x86_64 -lxilinxopencl -lrt
 
-ifeq ($(XDEVICE),"xilinx:aws-vu9p-f1:4ddr-xpr-2pr:4.0")
-	SDA_VER = 2017.1
-endif
-
-ifeq ($(SDA_VER),2017.1)
-	# 2017.1
-	PLATFORM := $(XDEVICE)
-	HOST_CFLAGS += -DTARGET_DEVICE=\"$(PLATFORM)\"
-else
-ifeq ($(SDA_VER),2017.2)
-	# 2017.2
-	PLATFORM := $(XDEVICE)
-	HOST_CFLAGS += -DTARGET_DEVICE=\"$(subst :,_,$(subst .,_,$(PLATFORM)))\"
-else
-	# 2017.4 or 2018.2
-	PLATFORM := $(subst :,_,$(subst .,_,$(XDEVICE)))
-	HOST_CFLAGS += -DTARGET_DEVICE=\"$(PLATFORM)\"
-endif
-endif
+PLATFORM := $(XDEVICE)
+HOST_CFLAGS += -DTARGET_DEVICE=\"$(PLATFORM)\"
 
 CLCXX_OPT += $(CLCXX_OPT_LEVEL) $(DEVICE_REPO_OPT) --platform $(PLATFORM) $(KERNEL_DEFS) $(KERNEL_INCS)
 CLCXX_OPT += --kernel $(KERNEL_NAME)
