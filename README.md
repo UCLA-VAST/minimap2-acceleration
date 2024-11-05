@@ -240,6 +240,8 @@ You can build the CPU SIMD kernel with the following command:
 
 We tested our implementation with the public Caenorhabditis Elegans 40x Sequence Coverage dataset obtained from a PacBio sequencer. You may want to first obtain the dataset from [here][24]. You can use any of the download tools it recommended on the page to obtain the `.fastq` files, and combine them with the `cat` command. In the following text, we assume you have the combined genome read file at `~/c_elegans40x.fastq`.
 
+**Note:** C. Elegans dataset has been removed from the link. If you have a backup, you can use it. Otherwise, you can use any other dataset you have. One option is the [Sunflower dataset][38] from the PacBio website.
+
 To generate the test data for later benchmarking, you can run:
 
 ```bash
@@ -596,6 +598,7 @@ This research is supported by CRISP, one of six centers in JUMP, a Semiconductor
 [35]:	https://github.com/stanford-mast/Silo
 [36]:	https://github.com/lh3/minimap2#limit
 [37]:	https://doi.org/10.1093/bioinformatics/bty191
+[38]:   https://github.com/rieseberglab/fastq-examples/raw/refs/heads/master/data/HI.4549.004.index_10.ANN0830_R1.fastq.gz
 
 [image-1]:	https://img.shields.io/badge/Version-Experimental-green.svg
 [image-2]:	https://img.shields.io/bower/l/bootstrap.svg
