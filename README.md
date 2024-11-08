@@ -30,6 +30,36 @@ testbed/minimap2 -ax map-pb ref.fa tgt.fa \
 #   correctness.
 ```
 
+### Build TAPA kernels and run benchmarks
+
+```bash
+# Set up your Vitis HLS environment.
+source /opt/tools/xilinx/Vitis/2024.1/settings64.sh
+
+# Build TAPA kernel for software emulation.
+(cd kernel/tapa/ && make exe);
+
+# Simulate the kernel benchmark in software.
+kernel/tapa/bin/xilinx_u50_gen3x16_xdma_5_202210_1/kernel \
+    "" in-1k.txt kernel-1k.txt
+
+# Build TAPA kernel for hardware emulation and run.
+(cd kernel/tapa/ && make hls);
+kernel/tapa/bin/xilinx_u50_gen3x16_xdma_5_202210_1/kernel \
+    kernel/tapa/bit/xilinx_u50_gen3x16_xdma_5_202210_1/kernel.xo \
+    in-1k.txt kernel-1k.txt
+
+# Generate bitstream and run on board.
+(cd kernel/tapa/ && make bitstream);
+kernel/tapa/bin/xilinx_u50_gen3x16_xdma_5_202210_1/kernel \
+    kernel/tapa/bit/xilinx_u50_gen3x16_xdma_5_202210_1/kernel.xclbin \
+    in-1k.txt kernel-1k.txt
+
+# The result is slightly different from out-1k.txt
+#   since we applied frequency optimizations,
+#   but they are equivalent in functionality.
+```
+
 ### Build FPGA kernel and run benchmarks
 
 ```bash
