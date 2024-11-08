@@ -18,8 +18,8 @@ BIN ?= bin/$(PLATFORM)
 BIT ?= bit/$(PLATFORM)
 TMP ?= tmp/$(PLATFORM)
 
-TAPACXX ?= tapa g++ --
-TAPA_COMPILE ?= tapa compile
+TAPACXX ?= tapa -w $(TMP) g++ --
+TAPA_COMPILE ?= tapa -w $(TMP) compile
 CLCXX ?= v++
 
 TAPA_CFLAGS += -g -O2 -I$(SRC)
