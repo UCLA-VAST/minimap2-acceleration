@@ -41,7 +41,7 @@ hw: $(BIN)/$(APP) $(BIT)/$(APP).xclbin
 hls: $(BIT)/$(APP).xo
 
 clean:
-	rm -rf $(OBJ) $(BIN) $(BIT) $(TMP)
+	rm -rf $(OBJ) $(BIN) $(BIT) $(TMP) *.log *.jou output.txt
 
 exe: $(BIN)/$(APP)
 
