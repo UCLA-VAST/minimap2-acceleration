@@ -33,12 +33,17 @@ int main(int argc, char *argv[]) {
   // compute
   device_returns.resize(device_anchors.size() / BATCH_SIZE_INPUT *
                         BATCH_SIZE_OUTPUT);
-  tapa::invoke(
-      DeviceChainKernel, bitstream,
-      tapa::read_only_mmap<anchor_dt>(device_anchors).vectorized<PE_NUM>(),
-      tapa::read_only_mmap<control_dt>(device_control).vectorized<PE_NUM>(),
-      tapa::write_only_mmap<return_dt>(device_returns).vectorized<PE_NUM>(),
-      device_anchors.size(), max_dist_x, max_dist_y, bw);
+  tapa::invoke(DeviceChainKernel, bitstream,
+               tapa::read_only_mmap<anchor_dt_bits>(
+                   (anchor_dt_bits *)device_anchors.data(),
+                   device_anchors.size() / PE_NUM),
+               tapa::read_only_mmap<control_dt_bits>(
+                   (control_dt_bits *)device_control.data(),
+                   device_control.size() / PE_NUM),
+               tapa::write_only_mmap<return_dt_bits>(
+                   (return_dt_bits *)device_returns.data(),
+                   device_returns.size() / PE_NUM),
+               device_anchors.size(), max_dist_x, max_dist_y, bw);
 
   // format the result back and print
   std::vector<return_t> rets;

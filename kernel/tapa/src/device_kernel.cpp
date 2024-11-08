@@ -136,44 +136,54 @@ void DeviceChain(tapa::istream<anchor_dt> &in,
   }
 }
 
-void Mmap2Anchors(tapa::mmap<tapa::vec_t<anchor_dt, PE_NUM>> anchors,
+void Mmap2Anchors(tapa::mmap<anchor_dt_bits> anchors,
                   tapa::ostreams<anchor_dt, PE_NUM> &out, int n) {
   int block_count = n / PE_NUM;
   [[tapa::pipeline]] //
   for (int block = 0; block < block_count; block++) {
     auto anchor_block = anchors[block];
-    for (int i = 0; i < PE_NUM; i++)
-      out[i].write(anchor_block[i]);
+    for (int i = 0; i < PE_NUM; i++) {
+      ap_uint<sizeof(anchor_dt) * 8> anchor_bits = anchor_block(
+          (i + 1) * sizeof(anchor_dt) * 8 - 1, i * sizeof(anchor_dt) * 8);
+      out[i].write(*reinterpret_cast<anchor_dt *>(&anchor_bits));
+    }
   }
 }
 
-void Mmap2Controls(tapa::mmap<tapa::vec_t<control_dt, PE_NUM>> controls,
+void Mmap2Controls(tapa::mmap<control_dt_bits> controls,
                    tapa::ostreams<control_dt, PE_NUM> &out, int n) {
   int batch_count = n / PE_NUM / BATCH_SIZE_INPUT;
   [[tapa::pipeline]] //
   for (int batch = 0; batch < batch_count; batch++) {
     auto control_batch = controls[batch];
-    for (int i = 0; i < PE_NUM; i++)
-      out[i].write(control_batch[i]);
+    for (int i = 0; i < PE_NUM; i++) {
+      ap_uint<sizeof(control_dt) * 8> control_bits = control_batch(
+          (i + 1) * sizeof(control_dt) * 8 - 1, i * sizeof(control_dt) * 8);
+      out[i].write(*(reinterpret_cast<control_dt *>(&control_bits)));
+    }
   }
 }
 
-void Returns2Mmap(tapa::mmap<tapa::vec_t<return_dt, PE_NUM>> returns,
+void Returns2Mmap(tapa::mmap<return_dt_bits> returns,
                   tapa::istreams<return_dt, PE_NUM> &in, int n) {
   int block_count = n / PE_NUM / BATCH_SIZE_INPUT * BATCH_SIZE_OUTPUT;
   [[tapa::pipeline]] //
   for (int block = 0; block < block_count; block++) {
-    tapa::vec_t<return_dt, PE_NUM> return_block;
-    for (int i = 0; i < PE_NUM; i++)
-      return_block[i] = in[i].read();
+    ap_uint<sizeof(return_dt) * 8 * PE_NUM> return_block;
+    for (int i = 0; i < PE_NUM; i++) {
+      return_dt ret = in[i].read();
+      return_block((i + 1) * sizeof(return_dt) * 8 - 1,
+                   i * sizeof(return_dt) * 8) =
+          *(reinterpret_cast<ap_uint<sizeof(return_dt) * 8> *>(&ret));
+    }
     returns[block] = return_block;
   }
 }
 
-void DeviceChainKernel(tapa::mmap<tapa::vec_t<anchor_dt, PE_NUM>> anchors,
-                       tapa::mmap<tapa::vec_t<control_dt, PE_NUM>> controls,
-                       tapa::mmap<tapa::vec_t<return_dt, PE_NUM>> returns,
-                       int n, int max_dist_x, int max_dist_y, int bw) {
+void DeviceChainKernel(tapa::mmap<anchor_dt_bits> anchors,
+                       tapa::mmap<control_dt_bits> controls,
+                       tapa::mmap<return_dt_bits> returns, int n,
+                       int max_dist_x, int max_dist_y, int bw) {
   tapa::streams<anchor_dt, PE_NUM> anchors_streams("anchors_streams");
   tapa::streams<control_dt, PE_NUM> controls_streams("controls_streams");
   tapa::streams<return_dt, PE_NUM> returns_streams("returns_streams");

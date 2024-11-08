@@ -11,7 +11,11 @@
 #define BATCH_SIZE_OUTPUT (2048)
 #define BATCH_SIZE_INPUT (BATCH_SIZE_OUTPUT + BACK_SEARCH_COUNT)
 
-void DeviceChainKernel(tapa::mmap<tapa::vec_t<anchor_dt, PE_NUM>> anchors,
-                       tapa::mmap<tapa::vec_t<control_dt, PE_NUM>> controls,
-                       tapa::mmap<tapa::vec_t<return_dt, PE_NUM>> returns,
-                       int n, int max_dist_x, int max_dist_y, int bw);
+typedef ap_uint<sizeof(anchor_dt) * 8 * PE_NUM> anchor_dt_bits;
+typedef ap_uint<sizeof(control_dt) * 8 * PE_NUM> control_dt_bits;
+typedef ap_uint<sizeof(return_dt) * 8 * PE_NUM> return_dt_bits;
+
+void DeviceChainKernel(tapa::mmap<anchor_dt_bits> anchors,
+                       tapa::mmap<control_dt_bits> controls,
+                       tapa::mmap<return_dt_bits> returns, int n,
+                       int max_dist_x, int max_dist_y, int bw);
